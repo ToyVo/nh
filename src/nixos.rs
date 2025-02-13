@@ -14,7 +14,7 @@ use crate::interface::OsSubcommand::{self};
 use crate::interface::{
     self, OsBuildVmArgs, OsGenerationsArgs, OsRebuildArgs, OsReplArgs, OsRollbackArgs,
 };
-use crate::update::update;
+use crate::update::{pull, update};
 use crate::util::ensure_ssh_key_login;
 use crate::util::get_hostname;
 
@@ -80,6 +80,14 @@ impl OsRebuildArgs {
             }
             true
         };
+
+        if self.common.pull {
+            pull(
+                &self.common.installable,
+                self.update_args.update,
+                self.common.dry,
+            )?;
+        }
 
         if self.update_args.update {
             update(&self.common.installable, self.update_args.update_input)?;

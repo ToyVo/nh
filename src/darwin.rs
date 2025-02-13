@@ -8,7 +8,7 @@ use crate::commands::Command;
 use crate::installable::Installable;
 use crate::interface::{DarwinArgs, DarwinRebuildArgs, DarwinReplArgs, DarwinSubcommand};
 use crate::nixos::toplevel_for;
-use crate::update::update;
+use crate::update::{pull, update};
 use crate::util::get_hostname;
 use crate::Result;
 
@@ -42,6 +42,14 @@ impl DarwinRebuildArgs {
 
         if nix::unistd::Uid::effective().is_root() {
             bail!("Don't run nh os as root. I will call sudo internally as needed");
+        }
+
+        if self.common.pull {
+            pull(
+                &self.common.installable,
+                self.update_args.update,
+                self.common.dry,
+            )?;
         }
 
         if self.update_args.update {
@@ -92,6 +100,16 @@ impl DarwinRebuildArgs {
         }
 
         let toplevel = toplevel_for(hostname, processed_installable, "toplevel");
+
+        if self.common.pull {
+            if let Installable::Flake { reference, .. } = &self.common.installable {
+                commands::Command::new("git")
+                    .args(["-C", reference, "pull"])
+                    .dry(self.common.dry)
+                    .message("Pulling Flake")
+                    .run()?;
+            }
+        }
 
         commands::Build::new(toplevel)
             .extra_arg("--out-link")
